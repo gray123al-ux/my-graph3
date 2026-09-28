@@ -1,3 +1,4 @@
+```python
 import re
 import calendar
 from datetime import date
@@ -93,7 +94,6 @@ def get_meal_data(year, month):
         st.error(f"NEIS API를 불러오는 중 오류가 발생했습니다: {e}")
         return pd.DataFrame()
 
-    # 데이터가 없는 경우
     if "mealServiceDietInfo" not in data:
         return pd.DataFrame()
 
@@ -113,7 +113,11 @@ def get_meal_data(year, month):
         menu = row.get("DDISH_NM", "")
 
         # <br/> 제거
-        clean_menu = re.sub(r"<br\s*/?>", "\n", menu)
+        clean_menu = re.sub(
+            r"<br\s*/?>",
+            "\n",
+            menu
+        )
 
         # kcal 추출
         kcal_match = re.search(
@@ -155,7 +159,9 @@ def get_meal_data(year, month):
         6: "일요일"
     }
 
-    df["요일"] = df["날짜"].dt.dayofweek.map(weekday_map)
+    df["요일"] = df["날짜"].dt.dayofweek.map(
+        weekday_map
+    )
 
     # 칼로리 숫자형 변환
     df["칼로리"] = pd.to_numeric(
@@ -163,7 +169,9 @@ def get_meal_data(year, month):
         errors="coerce"
     )
 
-    return df.sort_values("날짜").reset_index(drop=True)
+    return df.sort_values(
+        "날짜"
+    ).reset_index(drop=True)
 
 
 # =========================
@@ -184,11 +192,16 @@ if df.empty:
 else:
 
     # 칼로리 데이터가 있는 행만 사용
-    calorie_df = df.dropna(subset=["칼로리"]).copy()
+    calorie_df = df.dropna(
+        subset=["칼로리"]
+    ).copy()
 
     if calorie_df.empty:
 
-        st.warning("해당 월에는 칼로리 정보가 있는 급식 데이터가 없습니다.")
+        st.warning(
+            "해당 월에는 칼로리 정보가 있는 "
+            "급식 데이터가 없습니다."
+        )
 
     else:
 
@@ -213,7 +226,9 @@ else:
         # 주요 지표
         # =========================
 
-        st.subheader(f"📊 {year}년 {month}월 급식 칼로리")
+        st.subheader(
+            f"📊 {year}년 {month}월 급식 칼로리"
+        )
 
         c1, c2, c3 = st.columns(3)
 
@@ -247,7 +262,7 @@ else:
 
 
         # =========================
-        # 그래프
+        # 날짜별 급식 칼로리 그래프
         # =========================
 
         st.subheader("📈 날짜별 급식 칼로리")
@@ -261,17 +276,23 @@ else:
                 "날짜": "날짜",
                 "칼로리": "칼로리 (kcal)"
             },
-            title=f"{year}년 {month}월 날짜별 급식 칼로리"
+            title=(
+                f"{year}년 {month}월 "
+                "날짜별 급식 칼로리"
+            )
         )
 
-        # 평균선
+        # 월평균 기준선
         fig.add_hline(
             y=avg_kcal,
             line_dash="dash",
-            annotation_text=f"월평균 {avg_kcal:,.1f} kcal",
+            annotation_text=(
+                f"월평균 {avg_kcal:,.1f} kcal"
+            ),
             annotation_position="top left"
         )
 
+        # 마우스를 올렸을 때 표시
         fig.update_traces(
             hovertemplate=
             "날짜: %{x|%Y-%m-%d}<br>"
@@ -282,7 +303,8 @@ else:
         fig.update_layout(
             hovermode="x unified",
             xaxis_title="날짜",
-            yaxis_title="칼로리 (kcal)"
+            yaxis_title="칼로리 (kcal)",
+            height=500
         )
 
         st.plotly_chart(
@@ -291,11 +313,19 @@ else:
         )
 
 
-        st.markdown("### 💡 이 그래프로 알 수 있는 것")
+        # =========================
+        # 그래프에서 알 수 있는 것
+        # =========================
+
+        st.markdown(
+            "### 💡 이 그래프로 알 수 있는 것"
+        )
 
         st.write(
-            f"{year}년 {month}월의 급식 칼로리는 날짜에 따라 달라지며, "
-            f"한 달 평균은 약 {avg_kcal:,.1f}kcal입니다."
+            f"{year}년 {month}월의 급식 칼로리가 "
+            f"날짜별로 어떻게 달라지는지 확인할 수 있으며, "
+            f"점선은 한 달 평균인 "
+            f"{avg_kcal:,.1f}kcal를 나타냅니다."
         )
 
 
@@ -303,13 +333,17 @@ else:
         # 최고 / 최저 칼로리
         # =========================
 
-        st.subheader("🔎 칼로리가 가장 높은 날과 낮은 날")
+        st.subheader(
+            "🔎 칼로리가 가장 높은 날과 낮은 날"
+        )
 
         high_col, low_col = st.columns(2)
 
         with high_col:
 
-            st.markdown("#### 🔥 가장 높은 칼로리")
+            st.markdown(
+                "#### 🔥 가장 높은 칼로리"
+            )
 
             st.write(
                 f"**{max_row['날짜'].strftime('%Y년 %m월 %d일')} "
@@ -322,12 +356,16 @@ else:
             )
 
             with st.expander("급식 메뉴 보기"):
-                st.write(max_row["급식 메뉴"])
+                st.write(
+                    max_row["급식 메뉴"]
+                )
 
 
         with low_col:
 
-            st.markdown("#### 🌱 가장 낮은 칼로리")
+            st.markdown(
+                "#### 🌱 가장 낮은 칼로리"
+            )
 
             st.write(
                 f"**{min_row['날짜'].strftime('%Y년 %m월 %d일')} "
@@ -340,29 +378,41 @@ else:
             )
 
             with st.expander("급식 메뉴 보기"):
-                st.write(min_row["급식 메뉴"])
+                st.write(
+                    min_row["급식 메뉴"]
+                )
 
 
         # =========================
         # 날짜별 표
         # =========================
 
-        st.subheader("🍽️ 날짜별 급식 정보")
+        st.subheader(
+            "🍽️ 날짜별 급식 정보"
+        )
 
         table_df = df.copy()
 
-        table_df["날짜"] = table_df["날짜"].dt.strftime(
-            "%Y-%m-%d"
-        )
+        table_df["날짜"] = table_df[
+            "날짜"
+        ].dt.strftime("%Y-%m-%d")
 
-        table_df["칼로리"] = table_df["칼로리"].apply(
-            lambda x: f"{x:,.0f} kcal"
+        table_df["칼로리"] = table_df[
+            "칼로리"
+        ].apply(
+            lambda x:
+            f"{x:,.0f} kcal"
             if pd.notna(x)
             else "-"
         )
 
         table_df = table_df[
-            ["날짜", "요일", "칼로리", "급식 메뉴"]
+            [
+                "날짜",
+                "요일",
+                "칼로리",
+                "급식 메뉴"
+            ]
         ]
 
         st.dataframe(
@@ -378,5 +428,6 @@ else:
 
         st.caption(
             f"전체 급식일: {len(df)}일 · "
-            f"칼로리 확인 가능: {len(calorie_df)}일"
+            f"칼로리 확인 가능: "
+            f"{len(calorie_df)}일"
         )
