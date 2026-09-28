@@ -27,8 +27,8 @@ st.write("NEIS 급식 API를 이용해 선택한 달의 학교 급식 칼로리�
 # 학교 정보
 # =========================
 
-ATPT_OFCDC_SC_CODE = "J10"   # 경기도교육청
-SD_SCHUL_CODE = "7530480"    # 송탄고등학교
+ATPT_OFCDC_SC_CODE = "J10"
+SD_SCHUL_CODE = "7530480"
 
 API_URL = "https://open.neis.go.kr/hub/mealServiceDietInfo"
 
@@ -86,12 +86,15 @@ def get_meal_data(year, month):
             params=params,
             timeout=10
         )
+
         response.raise_for_status()
 
         data = response.json()
 
     except Exception as e:
-        st.error(f"NEIS API를 불러오는 중 오류가 발생했습니다: {e}")
+        st.error(
+            f"NEIS API를 불러오는 중 오류가 발생했습니다: {e}"
+        )
         return pd.DataFrame()
 
     if "mealServiceDietInfo" not in data:
@@ -112,14 +115,12 @@ def get_meal_data(year, month):
         meal_date = row.get("MLSV_YMD", "")
         menu = row.get("DDISH_NM", "")
 
-        # <br/> 제거
         clean_menu = re.sub(
             r"<br\s*/?>",
             "\n",
             menu
         )
 
-        # kcal 추출
         kcal_match = re.search(
             r"(\d+(?:\.\d+)?)\s*[Kk][Cc][Aa][Ll]",
             menu
@@ -141,14 +142,12 @@ def get_meal_data(year, month):
     if df.empty:
         return df
 
-    # 날짜 변환
     df["날짜"] = pd.to_datetime(
         df["날짜"],
         format="%Y%m%d",
         errors="coerce"
     )
 
-    # 요일
     weekday_map = {
         0: "월요일",
         1: "화요일",
@@ -163,7 +162,6 @@ def get_meal_data(year, month):
         weekday_map
     )
 
-    # 칼로리 숫자형 변환
     df["칼로리"] = pd.to_numeric(
         df["칼로리"],
         errors="coerce"
@@ -187,11 +185,12 @@ df = get_meal_data(year, month)
 
 if df.empty:
 
-    st.warning("해당 월에는 급식 데이터가 없습니다.")
+    st.warning(
+        "해당 월에는 급식 데이터가 없습니다."
+    )
 
 else:
 
-    # 칼로리 데이터가 있는 행만 사용
     calorie_df = df.dropna(
         subset=["칼로리"]
     ).copy()
@@ -262,10 +261,10 @@ else:
 
 
         # =========================
-        # 날짜별 급식 칼로리 그래프
+        # 그래프 1
         # =========================
 
-        st.subheader("📈 날짜별 급식 칼로리")
+        st.subheader("📈 그래프 1. 날짜별 급식 칼로리")
 
         fig = px.line(
             calorie_df,
@@ -276,13 +275,9 @@ else:
                 "날짜": "날짜",
                 "칼로리": "칼로리 (kcal)"
             },
-            title=(
-                f"{year}년 {month}월 "
-                "날짜별 급식 칼로리"
-            )
+            title=f"{year}년 {month}월 날짜별 급식 칼로리"
         )
 
-        # 월평균 기준선
         fig.add_hline(
             y=avg_kcal,
             line_dash="dash",
@@ -292,7 +287,6 @@ else:
             annotation_position="top left"
         )
 
-        # 마우스를 올렸을 때 표시
         fig.update_traces(
             hovertemplate=
             "날짜: %{x|%Y-%m-%d}<br>"
@@ -303,8 +297,7 @@ else:
         fig.update_layout(
             hovermode="x unified",
             xaxis_title="날짜",
-            yaxis_title="칼로리 (kcal)",
-            height=500
+            yaxis_title="칼로리 (kcal)"
         )
 
         st.plotly_chart(
@@ -313,19 +306,106 @@ else:
         )
 
 
-        # =========================
-        # 그래프에서 알 수 있는 것
-        # =========================
-
         st.markdown(
             "### 💡 이 그래프로 알 수 있는 것"
         )
 
         st.write(
             f"{year}년 {month}월의 급식 칼로리가 "
-            f"날짜별로 어떻게 달라지는지 확인할 수 있으며, "
+            f"날짜별로 어떻게 변하는지 확인할 수 있습니다. "
             f"점선은 한 달 평균인 "
-            f"{avg_kcal:,.1f}kcal를 나타냅니다."
+            f"{avg_kcal:,.1f}kcal입니다."
+        )
+
+
+        # =========================
+        # 그래프 2
+        # =========================
+
+        st.subheader("📊 그래프 2. 요일별 평균 급식 칼로리")
+
+        weekday_order = [
+            "월요일",
+            "화요일",
+            "수요일",
+            "목요일",
+            "금요일"
+        ]
+
+        weekday_avg = (
+            calorie_df[
+                calorie_df["요일"].isin(weekday_order)
+            ]
+            .groupby(
+                "요일",
+                as_index=False
+            )["칼로리"]
+            .mean()
+        )
+
+        weekday_avg["요일"] = pd.Categorical(
+            weekday_avg["요일"],
+            categories=weekday_order,
+            ordered=True
+        )
+
+        weekday_avg = weekday_avg.sort_values(
+            "요일"
+        )
+
+        fig2 = px.bar(
+            weekday_avg,
+            x="요일",
+            y="칼로리",
+            text="칼로리",
+            labels={
+                "요일": "요일",
+                "칼로리": "평균 칼로리 (kcal)"
+            },
+            title=(
+                f"{year}년 {month}월 "
+                "요일별 평균 급식 칼로리"
+            )
+        )
+
+        fig2.update_traces(
+            texttemplate="%{text:,.0f} kcal",
+            textposition="outside",
+            hovertemplate=
+            "요일: %{x}<br>"
+            "평균 칼로리: %{y:,.1f} kcal"
+            "<extra></extra>"
+        )
+
+        fig2.update_layout(
+            xaxis_title="요일",
+            yaxis_title="평균 칼로리 (kcal)",
+            height=500
+        )
+
+        st.plotly_chart(
+            fig2,
+            use_container_width=True
+        )
+
+
+        st.markdown(
+            "### 💡 이 그래프로 알 수 있는 것"
+        )
+
+        highest_weekday = weekday_avg.loc[
+            weekday_avg["칼로리"].idxmax()
+        ]
+
+        lowest_weekday = weekday_avg.loc[
+            weekday_avg["칼로리"].idxmin()
+        ]
+
+        st.write(
+            f"{highest_weekday['요일']}의 평균 칼로리가 "
+            f"{highest_weekday['칼로리']:,.1f}kcal로 가장 높고, "
+            f"{lowest_weekday['요일']}이 "
+            f"{lowest_weekday['칼로리']:,.1f}kcal로 가장 낮습니다."
         )
 
 
@@ -431,94 +511,6 @@ else:
             f"칼로리 확인 가능: "
             f"{len(calorie_df)}일"
         )
-st.subheader("📊 요일별 평균 급식 칼로리")
-```python
-# =========================
-# 그래프 2: 요일별 평균 급식 칼로리
-# =========================
-
-st.subheader("📊 요일별 평균 급식 칼로리")
-
-# 요일별 평균 계산
-weekday_order = [
-    "월요일",
-    "화요일",
-    "수요일",
-    "목요일",
-    "금요일"
-]
-
-weekday_avg = (
-    calorie_df[
-        calorie_df["요일"].isin(weekday_order)
-    ]
-    .groupby("요일", as_index=False)["칼로리"]
-    .mean()
-)
-
-# 요일 순서 정렬
-weekday_avg["요일"] = pd.Categorical(
-    weekday_avg["요일"],
-    categories=weekday_order,
-    ordered=True
-)
-
-weekday_avg = weekday_avg.sort_values("요일")
-
-# 막대그래프
-fig2 = px.bar(
-    weekday_avg,
-    x="요일",
-    y="칼로리",
-    text="칼로리",
-    labels={
-        "요일": "요일",
-        "칼로리": "평균 칼로리 (kcal)"
-    },
-    title=f"{year}년 {month}월 요일별 평균 급식 칼로리"
-)
-
-fig2.update_traces(
-    texttemplate="%{text:,.0f} kcal",
-    textposition="outside",
-    hovertemplate=
-    "요일: %{x}<br>"
-    "평균 칼로리: %{y:,.1f} kcal"
-    "<extra></extra>"
-)
-
-fig2.update_layout(
-    yaxis_title="평균 칼로리 (kcal)",
-    xaxis_title="요일",
-    height=500
-)
-
-st.plotly_chart(
-    fig2,
-    use_container_width=True
-)
 
 
-# =========================
-# 그래프 2에서 알 수 있는 것
-# =========================
-
-st.markdown(
-    "### 💡 이 그래프로 알 수 있는 것"
-)
-
-highest_weekday = weekday_avg.loc[
-    weekday_avg["칼로리"].idxmax()
-]
-
-lowest_weekday = weekday_avg.loc[
-    weekday_avg["칼로리"].idxmin()
-]
-
-st.write(
-    f"요일별로 급식 칼로리를 비교하면 "
-    f"{highest_weekday['요일']}의 평균 칼로리가 "
-    f"{highest_weekday['칼로리']:,.1f}kcal로 가장 높고, "
-    f"{lowest_weekday['요일']}이 "
-    f"{lowest_weekday['칼로리']:,.1f}kcal로 가장 낮습니다."
-)
+이제 앱에는 **그래프 1(날짜별 변화)**과 **그래프 2(요일별 평균 비교)**가 모두 들어갑니다.
