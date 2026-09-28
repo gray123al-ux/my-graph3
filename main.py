@@ -27,10 +27,9 @@ st.write(
 # =========================
 # NEIS 학교 정보
 # =========================
-ATPT_OFCDC_SC_CODE = "J10"       # 경기도교육청
-SD_SCHUL_CODE = "7530480"       # 송탄고등학교
+ATPT_OFCDC_SC_CODE = "J10"
+SD_SCHUL_CODE = "7530480"
 
-# NEIS 급식식단정보 API
 API_URL = "https://open.neis.go.kr/hub/mealServiceDietInfo"
 
 
@@ -59,33 +58,26 @@ with col2:
 
 
 # =========================
-# NEIS API에서 급식 데이터 가져오기
+# NEIS API 데이터 가져오기
 # =========================
 @st.cache_data(ttl=3600)
 def get_meal_data(year, month):
 
-    # 해당 월의 마지막 날짜
     last_day = calendar.monthrange(year, month)[1]
 
     from_ymd = f"{year}{month:02d}01"
     to_ymd = f"{year}{month:02d}{last_day:02d}"
 
-    # NEIS API 요청
     params = {
         "Type": "json",
         "pIndex": 1,
         "pSize": 1000,
-
-        # 교육청
         "ATPT_OFCDC_SC_CODE": ATPT_OFCDC_SC_CODE,
-
-        # 학교
         "SD_SCHUL_CODE": SD_SCHUL_CODE,
 
-        # 중식
+        # 중식만 조회
         "MMEAL_SC_CODE": "2",
 
-        # 조회 기간
         "MLSV_FROM_YMD": from_ymd,
         "MLSV_TO_YMD": to_ymd,
     }
@@ -98,7 +90,6 @@ def get_meal_data(year, month):
         )
 
         response.raise_for_status()
-
         data = response.json()
 
     except requests.exceptions.RequestException as e:
@@ -117,10 +108,6 @@ def get_meal_data(year, month):
 
         return pd.DataFrame()
 
-
-    # =========================
-    # API 응답 확인
-    # =========================
     if "mealServiceDietInfo" not in data:
         return pd.DataFrame()
 
@@ -128,13 +115,8 @@ def get_meal_data(year, month):
         rows = data["mealServiceDietInfo"][1]["row"]
 
     except (KeyError, IndexError):
-
         return pd.DataFrame()
 
-
-    # =========================
-    # 데이터 정리
-    # =========================
     result = []
 
     for row in rows:
@@ -142,14 +124,14 @@ def get_meal_data(year, month):
         meal_date = row.get("MLSV_YMD", "")
         menu = row.get("DDISH_NM", "")
 
-        # <br/> → 줄바꿈
+        # <br/>를 줄바꿈으로 변경
         menu = re.sub(
             r"<br\s*/?>",
             "\n",
             menu
         )
 
-        # 메뉴 문자열에서 kcal 추출
+        # kcal 추출
         kcal_match = re.search(
             r"(\d+(?:\.\d+)?)\s*[Kk][Cc][Aa][Ll]",
             menu
@@ -166,26 +148,19 @@ def get_meal_data(year, month):
             "칼로리": kcal
         })
 
-
     df = pd.DataFrame(result)
 
     if df.empty:
         return df
 
-
-    # =========================
-    # 날짜 변환
-    # =========================
+    # 날짜
     df["날짜"] = pd.to_datetime(
         df["날짜"],
         format="%Y%m%d",
         errors="coerce"
     )
 
-
-    # =========================
-    # 요일 추가
-    # =========================
+    # 요일
     weekday_map = {
         0: "월요일",
         1: "화요일",
@@ -200,20 +175,13 @@ def get_meal_data(year, month):
         weekday_map
     )
 
-
-    # =========================
     # 칼로리 숫자 변환
-    # =========================
     df["칼로리"] = pd.to_numeric(
         df["칼로리"],
         errors="coerce"
     )
 
-
-    # 날짜순 정렬
-    df = df.sort_values("날짜")
-
-    return df
+    return df.sort_values("날짜")
 
 
 # =========================
@@ -222,15 +190,11 @@ def get_meal_data(year, month):
 df = get_meal_data(year, month)
 
 
-# =========================
-# 데이터가 없는 경우
-# =========================
 if df.empty:
 
     st.warning(
         "해당 월에는 급식 데이터가 없습니다."
     )
-
 
 else:
 
@@ -238,13 +202,11 @@ else:
         subset=["칼로리"]
     ).copy()
 
-
     if calorie_df.empty:
 
         st.warning(
             "칼로리 정보가 있는 급식 데이터가 없습니다."
         )
-
 
     else:
 
@@ -289,20 +251,16 @@ else:
                 f"{min_kcal:,.0f} kcal"
             )
 
-
         st.info(
-            f"{year}년 {month}월 학교 급식의 "
-            f"하루 평균 칼로리는 약 "
-            f"{avg_kcal:,.0f} kcal입니다."
+            f"{year}년 {month}월 학교 급식의 하루 평균 칼로리는 "
+            f"약 {avg_kcal:,.0f} kcal입니다."
         )
 
 
-        # ==================================================
+        # =========================
         # 그래프 1
-        # ==================================================
-        st.subheader(
-            "📈 그래프 1. 날짜별 급식 칼로리"
-        )
+        # =========================
+        st.subheader("📈 그래프 1. 날짜별 급식 칼로리")
 
         fig1 = px.line(
             calorie_df,
@@ -316,13 +274,10 @@ else:
             }
         )
 
-        # 평균선
         fig1.add_hline(
             y=avg_kcal,
             line_dash="dash",
-            annotation_text=(
-                f"월 평균 {avg_kcal:,.0f} kcal"
-            ),
+            annotation_text=f"월 평균 {avg_kcal:,.0f} kcal",
             annotation_position="top left"
         )
 
@@ -346,9 +301,7 @@ else:
             use_container_width=True
         )
 
-        st.markdown(
-            "### 💡 이 그래프로 알 수 있는 것"
-        )
+        st.markdown("### 💡 이 그래프로 알 수 있는 것")
 
         st.write(
             "날짜에 따라 급식 칼로리가 어떻게 변하는지와 "
@@ -356,12 +309,10 @@ else:
         )
 
 
-        # ==================================================
+        # =========================
         # 그래프 2
-        # ==================================================
-        st.subheader(
-            "📊 그래프 2. 요일별 평균 급식 칼로리"
-        )
+        # =========================
+        st.subheader("📊 그래프 2. 요일별 평균 급식 칼로리")
 
         weekday_order = [
             "월요일",
@@ -382,17 +333,13 @@ else:
             .mean()
         )
 
-        # 월요일 → 금요일 순서
         weekday_avg["요일"] = pd.Categorical(
             weekday_avg["요일"],
             categories=weekday_order,
             ordered=True
         )
 
-        weekday_avg = weekday_avg.sort_values(
-            "요일"
-        )
-
+        weekday_avg = weekday_avg.sort_values("요일")
 
         if weekday_avg.empty:
 
@@ -407,10 +354,7 @@ else:
                 x="요일",
                 y="칼로리",
                 text="칼로리",
-                title=(
-                    f"{year}년 {month}월 "
-                    "요일별 평균 급식 칼로리"
-                ),
+                title=f"{year}년 {month}월 요일별 평균 급식 칼로리",
                 labels={
                     "요일": "요일",
                     "칼로리": "평균 칼로리 (kcal)"
@@ -430,13 +374,7 @@ else:
             fig2.update_layout(
                 xaxis_title="요일",
                 yaxis_title="평균 칼로리 (kcal)",
-                height=500,
-                margin=dict(
-                    t=80,
-                    b=50,
-                    l=50,
-                    r=30
-                )
+                height=500
             )
 
             st.plotly_chart(
@@ -444,9 +382,7 @@ else:
                 use_container_width=True
             )
 
-            st.markdown(
-                "### 💡 이 그래프로 알 수 있는 것"
-            )
+            st.markdown("### 💡 이 그래프로 알 수 있는 것")
 
             highest_weekday = weekday_avg.loc[
                 weekday_avg["칼로리"].idxmax()
@@ -464,20 +400,16 @@ else:
             )
 
 
-        # ==================================================
-        # 가장 높은 날 / 가장 낮은 날
-        # ==================================================
-        st.subheader(
-            "🍽️ 가장 높은 날과 가장 낮은 날"
-        )
+        # =========================
+        # 가장 높은 날 / 낮은 날
+        # =========================
+        st.subheader("🍽️ 가장 높은 날과 가장 낮은 날")
 
         high_col, low_col = st.columns(2)
 
         with high_col:
 
-            st.markdown(
-                "### 🔥 가장 높은 칼로리"
-            )
+            st.markdown("### 🔥 가장 높은 칼로리")
 
             st.write(
                 f"**{max_row['날짜'].strftime('%Y-%m-%d')}**"
@@ -488,16 +420,11 @@ else:
                 f"{max_row['칼로리']:,.0f} kcal"
             )
 
-            st.write(
-                max_row["급식 메뉴"]
-            )
-
+            st.write(max_row["급식 메뉴"])
 
         with low_col:
 
-            st.markdown(
-                "### 🌱 가장 낮은 칼로리"
-            )
+            st.markdown("### 🌱 가장 낮은 칼로리")
 
             st.write(
                 f"**{min_row['날짜'].strftime('%Y-%m-%d')}**"
@@ -508,17 +435,13 @@ else:
                 f"{min_row['칼로리']:,.0f} kcal"
             )
 
-            st.write(
-                min_row["급식 메뉴"]
-            )
+            st.write(min_row["급식 메뉴"])
 
 
-        # ==================================================
+        # =========================
         # 급식 데이터 표
-        # ==================================================
-        st.subheader(
-            "📋 날짜별 급식 데이터"
-        )
+        # =========================
+        st.subheader("📋 날짜별 급식 데이터")
 
         display_df = calorie_df.copy()
 
@@ -544,7 +467,22 @@ else:
         )
 
         st.caption(
-            f"총 {len(calorie_df)}일의 "
-            "칼로리 데이터를 분석했습니다."
+            f"총 {len(calorie_df)}일의 칼로리 데이터를 분석했습니다."
         )
-API_URL = "https://open.neis.go.kr/hub/mealServiceDietInfo"
+
+
+# ==================================================
+# 참고 자료
+# ==================================================
+st.divider()
+
+st.subheader("📚 참고 자료")
+
+st.write(
+    "학교 급식의 칼로리에 관한 참고 자료입니다."
+)
+
+st.markdown(
+    "[CSPI — Calories in School Lunches]"
+    "(https://www.cspi.org/resource/calories-school-lunches)"
+)
