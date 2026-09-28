@@ -547,3 +547,4 @@ else:
             f"총 {len(calorie_df)}일의 "
             "칼로리 데이터를 분석했습니다."
         )
+API_URL = "https://open.neis.go.kr/hub/mealServiceDietInfo"
