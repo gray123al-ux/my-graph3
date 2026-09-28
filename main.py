@@ -431,3 +431,94 @@ else:
             f"칼로리 확인 가능: "
             f"{len(calorie_df)}일"
         )
+st.subheader("📊 요일별 평균 급식 칼로리")
+```python
+# =========================
+# 그래프 2: 요일별 평균 급식 칼로리
+# =========================
+
+st.subheader("📊 요일별 평균 급식 칼로리")
+
+# 요일별 평균 계산
+weekday_order = [
+    "월요일",
+    "화요일",
+    "수요일",
+    "목요일",
+    "금요일"
+]
+
+weekday_avg = (
+    calorie_df[
+        calorie_df["요일"].isin(weekday_order)
+    ]
+    .groupby("요일", as_index=False)["칼로리"]
+    .mean()
+)
+
+# 요일 순서 정렬
+weekday_avg["요일"] = pd.Categorical(
+    weekday_avg["요일"],
+    categories=weekday_order,
+    ordered=True
+)
+
+weekday_avg = weekday_avg.sort_values("요일")
+
+# 막대그래프
+fig2 = px.bar(
+    weekday_avg,
+    x="요일",
+    y="칼로리",
+    text="칼로리",
+    labels={
+        "요일": "요일",
+        "칼로리": "평균 칼로리 (kcal)"
+    },
+    title=f"{year}년 {month}월 요일별 평균 급식 칼로리"
+)
+
+fig2.update_traces(
+    texttemplate="%{text:,.0f} kcal",
+    textposition="outside",
+    hovertemplate=
+    "요일: %{x}<br>"
+    "평균 칼로리: %{y:,.1f} kcal"
+    "<extra></extra>"
+)
+
+fig2.update_layout(
+    yaxis_title="평균 칼로리 (kcal)",
+    xaxis_title="요일",
+    height=500
+)
+
+st.plotly_chart(
+    fig2,
+    use_container_width=True
+)
+
+
+# =========================
+# 그래프 2에서 알 수 있는 것
+# =========================
+
+st.markdown(
+    "### 💡 이 그래프로 알 수 있는 것"
+)
+
+highest_weekday = weekday_avg.loc[
+    weekday_avg["칼로리"].idxmax()
+]
+
+lowest_weekday = weekday_avg.loc[
+    weekday_avg["칼로리"].idxmin()
+]
+
+st.write(
+    f"요일별로 급식 칼로리를 비교하면 "
+    f"{highest_weekday['요일']}의 평균 칼로리가 "
+    f"{highest_weekday['칼로리']:,.1f}kcal로 가장 높고, "
+    f"{lowest_weekday['요일']}이 "
+    f"{lowest_weekday['칼로리']:,.1f}kcal로 가장 낮습니다."
+)
