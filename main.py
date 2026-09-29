@@ -1,1059 +1,394 @@
-import re
-
-import pandas as pd
-import requests
-import plotly.express as px
 import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
 
 
-# ==================================================
-# 페이지 설정
-# ==================================================
+# --------------------------------------------------
+# 기본 설정
+# --------------------------------------------------
 st.set_page_config(
-    page_title="급식의 한 달 평균 칼로리는 얼마나 될까?",
-    page_icon="🍚",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="기온 예측기",
+    page_icon="🌡️",
+    layout="wide"
 )
 
+st.title("🌡️ 기온 예측기")
+st.write("서울의 연평균기온 데이터를 이용해 장기적인 기온 추세를 살펴봅니다.")
 
-# ==================================================
-# 다크 테마 디자인
-# ==================================================
-st.markdown("""
-<style>
-    /* 전체 앱 */
-    .stApp {
-        background-color: #0E1117;
-        color: #E8E8E8;
-    }
 
-    /* 메인 컨테이너 */
-    .main .block-container {
-        max-width: 1200px;
-        padding-top: 2rem;
-        padding-bottom: 4rem;
-    }
-
-    /* 기본 텍스트 */
-    p, span, label {
-        color: #D8D8D8;
-    }
-
-    /* 메인 제목 */
-    .main-title {
-        font-size: 2.7rem;
-        font-weight: 800;
-        color: #FFFFFF;
-        margin-bottom: 0.2rem;
-    }
-
-    .subtitle {
-        font-size: 1.05rem;
-        color: #A9A9B2;
-        margin-bottom: 2rem;
-    }
-
-    /* 섹션 제목 */
-    .section-title {
-        font-size: 1.45rem;
-        font-weight: 750;
-        color: #FFFFFF;
-        margin-top: 2rem;
-        margin-bottom: 0.8rem;
-    }
-
-    /* 안내 박스 */
-    .info-box {
-        background-color: #1B1F27;
-        border-left: 5px solid #FFB84D;
-        border-radius: 10px;
-        padding: 1rem 1.2rem;
-        color: #DCDCDC;
-        margin: 1rem 0 1.5rem 0;
-    }
-
-    .info-box b {
-        color: #FFD27A;
-    }
-
-    /* 통계 카드 */
-    .stat-card {
-        background: linear-gradient(
-            145deg,
-            #191D25,
-            #14171D
-        );
-        border-radius: 18px;
-        padding: 1.3rem;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.35);
-        border: 1px solid #292E38;
-        min-height: 145px;
-    }
-
-    .stat-label {
-        font-size: 0.95rem;
-        color: #9EA4AF;
-        margin-bottom: 0.4rem;
-    }
-
-    .stat-value {
-        font-size: 2rem;
-        font-weight: 800;
-        color: #FFFFFF;
-    }
-
-    .stat-description {
-        font-size: 0.85rem;
-        color: #858B96;
-        margin-top: 0.4rem;
-    }
-
-    /* 그래프 카드 */
-    .chart-card {
-        background-color: #15181F;
-        border-radius: 18px;
-        padding: 0.8rem 1rem 0.3rem 1rem;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
-        border: 1px solid #292E38;
-        margin-bottom: 1rem;
-    }
-
-    /* 그래프 설명 */
-    .what-box {
-        background-color: #181C23;
-        border-radius: 12px;
-        padding: 0.9rem 1rem;
-        margin: 0.8rem 0 2rem 0;
-        color: #C9CDD4;
-        border: 1px solid #292E38;
-    }
-
-    .what-title {
-        font-weight: 750;
-        color: #FFCA70;
-        margin-bottom: 0.3rem;
-    }
-
-    /* 급식 카드 */
-    .meal-card {
-        background: linear-gradient(
-            145deg,
-            #191D25,
-            #14171D
-        );
-        border-radius: 18px;
-        padding: 1.3rem;
-        border: 1px solid #292E38;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
-        min-height: 260px;
-    }
-
-    .meal-card-title {
-        font-size: 1.2rem;
-        font-weight: 750;
-        color: #FFFFFF;
-    }
-
-    .meal-date {
-        font-size: 1rem;
-        color: #9EA4AF;
-        margin-top: 0.5rem;
-    }
-
-    .meal-kcal {
-        font-size: 1.8rem;
-        font-weight: 800;
-        color: #FFB84D;
-        margin: 0.5rem 0;
-    }
-
-    .menu-text {
-        color: #C7CBD2;
-        line-height: 1.7;
-        white-space: pre-line;
-    }
-
-    /* 참고 자료 */
-    .reference-box {
-        background-color: #15181F;
-        border-radius: 16px;
-        padding: 1.2rem 1.4rem;
-        border: 1px solid #292E38;
-        color: #BFC4CC;
-        margin-bottom: 1rem;
-    }
-
-    /* 사이드바 */
-    section[data-testid="stSidebar"] {
-        background-color: #11141A;
-        border-right: 1px solid #292E38;
-    }
-
-    .sidebar-title {
-        font-size: 1.35rem;
-        font-weight: 800;
-        color: #FFFFFF;
-    }
-
-    .sidebar-school {
-        background-color: #191D25;
-        padding: 1rem;
-        border-radius: 14px;
-        margin: 1rem 0;
-        border: 1px solid #292E38;
-    }
-
-    .sidebar-school b {
-        color: #FFFFFF;
-    }
-
-    .sidebar-school span {
-        color: #949AA5 !important;
-    }
-
-    /* 입력 위젯 */
-    div[data-baseweb="select"] > div {
-        background-color: #191D25;
-        border-color: #343A46;
-        color: #FFFFFF;
-    }
-
-    div[data-baseweb="select"] span {
-        color: #FFFFFF !important;
-    }
-
-    input {
-        background-color: #191D25 !important;
-        color: #FFFFFF !important;
-    }
-
-    /* 데이터프레임 */
-    div[data-testid="stDataFrame"] {
-        border: 1px solid #292E38;
-        border-radius: 12px;
-        overflow: hidden;
-    }
-
-    /* 링크 */
-    a {
-        color: #FFBF5F !important;
-        font-weight: 600;
-    }
-
-    a:hover {
-        color: #FFD88A !important;
-    }
-
-    /* 경고 */
-    div[data-testid="stAlert"] {
-        background-color: #1B1F27;
-    }
-
-    /* 버튼 */
-    button {
-        border-radius: 10px !important;
-    }
-
-    /* 구분선 */
-    hr {
-        border-color: #292E38 !important;
-    }
-
-    /* 모바일 */
-    @media (max-width: 768px) {
-        .main-title {
-            font-size: 2rem;
-        }
-
-        .stat-value {
-            font-size: 1.6rem;
-        }
-    }
-</style>
-""", unsafe_allow_html=True)
-
-
-# ==================================================
-# 학교 / API 정보
-# ==================================================
-ATPT_OFCDC_SC_CODE = "J10"
-SD_SCHUL_CODE = "7530480"
-
-API_URL = "https://open.neis.go.kr/hub/mealServiceDietInfo"
-
-
-# ==================================================
-# NEIS 데이터 가져오기
-# ==================================================
-@st.cache_data(ttl=3600)
-def get_all_meal_data():
-    """NEIS API에서 2025-09-01 ~ 2026-09-30 중식 데이터를 한 번에 가져옵니다."""
-    try:
-        api_key = st.secrets["KEY"]
-    except Exception:
-        return pd.DataFrame(), (
-            'Streamlit Secrets에 KEY가 없습니다. '
-            '.streamlit/secrets.toml에 KEY = "발급받은_인증키"를 넣어 주세요.'
-        )
-
-    params = {
-        "KEY": api_key,
-        "Type": "json",
-        "pIndex": 1,
-        "pSize": 1000,
-        "ATPT_OFCDC_SC_CODE": ATPT_OFCDC_SC_CODE,
-        "SD_SCHUL_CODE": SD_SCHUL_CODE,
-        "MMEAL_SC_CODE": "2",
-        "MLSV_FROM_YMD": "20250901",
-        "MLSV_TO_YMD": "20260930",
-    }
-
-    try:
-        response = requests.get(
-            API_URL,
-            params=params,
-            timeout=15
-        )
-        response.raise_for_status()
-        data = response.json()
-    except requests.exceptions.RequestException as e:
-        return pd.DataFrame(), f"API 연결 오류: {e}"
-    except ValueError:
-        return pd.DataFrame(), "API에서 올바른 JSON 데이터를 받지 못했습니다."
-
-    if "mealServiceDietInfo" not in data:
-        result = data.get("RESULT", {})
-        message = result.get(
-            "MESSAGE",
-            "NEIS API에서 급식 데이터를 찾지 못했습니다."
-        )
-        return pd.DataFrame(), message
-
-    try:
-        rows = data["mealServiceDietInfo"][1]["row"]
-    except (KeyError, IndexError, TypeError):
-        return pd.DataFrame(), "NEIS API 응답에서 급식 데이터를 찾지 못했습니다."
-
-    result = []
-
-    for row in rows:
-        meal_date = row.get("MLSV_YMD", "")
-        menu = row.get("DDISH_NM", "")
-
-        # <br/> → 줄바꿈
-        menu = re.sub(r"<br\s*/?>", "\n", menu)
-
-        # kcal 숫자 추출
-        kcal_match = re.search(
-            r"(\d+(?:\.\d+)?)\s*[Kk][Cc][Aa][Ll]",
-            menu
-        )
-
-        kcal = float(kcal_match.group(1)) if kcal_match else None
-
-        result.append({
-            "날짜": meal_date,
-            "급식 메뉴": menu,
-            "칼로리": kcal
-        })
-
-    df = pd.DataFrame(result)
-
-    if df.empty:
-        return df, None
-
-    df["날짜"] = pd.to_datetime(
-        df["날짜"],
-        format="%Y%m%d",
-        errors="coerce"
-    )
-
-    weekday_map = {
-        0: "월요일",
-        1: "화요일",
-        2: "수요일",
-        3: "목요일",
-        4: "금요일",
-        5: "토요일",
-        6: "일요일"
-    }
-
-    df["요일"] = df["날짜"].dt.weekday.map(weekday_map)
-
-    df["칼로리"] = pd.to_numeric(
-        df["칼로리"],
-        errors="coerce"
-    )
-
-    return df.sort_values("날짜"), None
-
-
-# ==================================================
-# 사이드바
-# ==================================================
-with st.sidebar:
-
-    st.markdown(
-        '<div class="sidebar-title">🍚 급식 분석</div>',
-        unsafe_allow_html=True
-    )
-
-    st.caption(
-        "NEIS 학교 급식 데이터를 이용한 칼로리 분석"
-    )
-
-    st.markdown(
-        """
-        <div class="sidebar-school">
-            <b>🏫 송탄고등학교</b><br>
-            <span>경기도교육청 · 중식</span>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.markdown("### 📅 분석 기간")
-
-    year = st.selectbox(
-        "연도",
-        [2025, 2026],
-        index=1
-    )
-
-    available_months = list(range(1, 13))
-    if year == 2025:
-        available_months = list(range(9, 13))
-    elif year == 2026:
-        available_months = list(range(1, 10))
-
-    month = st.selectbox(
-        "월",
-        available_months,
-        index=len(available_months) - 1,
-        format_func=lambda x: f"{x}월"
-    )
-
-    st.divider()
-
-    st.markdown("### ℹ️ 데이터 정보")
-
-    st.write("**교육청:** 경기")
-    st.write("**학교:** 송탄고등학교")
-    st.write("**식사:** 중식")
-    st.write("**출처:** NEIS 교육정보 개방 포털")
-
-    st.divider()
-
-    st.caption(
-        "데이터는 NEIS API에서 가져옵니다."
-    )
-
-    if st.button("🔄 데이터 새로고침", use_container_width=True):
-        get_all_meal_data.clear()
-        st.rerun()
-
-
-# ==================================================
-# 메인 제목
-# ==================================================
-st.markdown(
-    '<div class="main-title">'
-    '🍚 급식의 한 달 평균 칼로리는 얼마나 될까?'
-    '</div>',
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    f'<div class="subtitle">'
-    f'송탄고등학교의 {year}년 {month}월 중식 데이터를 분석해 '
-    f'하루 평균 칼로리와 급식 패턴을 살펴봅니다.'
-    f'</div>',
-    unsafe_allow_html=True
-)
-
-
-# ==================================================
+# --------------------------------------------------
 # 데이터 불러오기
-# ==================================================
-all_df, error_message = get_all_meal_data()
+# --------------------------------------------------
+DATA_URL = (
+    "https://raw.githubusercontent.com/greatsong/modudata/"
+    "bb860932644270ad1199f10d3e7670e30231bce4/data/seoul.csv"
+)
 
-if error_message:
-    st.error(error_message)
+
+@st.cache_data
+def load_data():
+    df = pd.read_csv(DATA_URL, encoding="utf-8")
+
+    df["날짜"] = pd.to_datetime(df["날짜"], errors="coerce")
+    df["평균기온"] = pd.to_numeric(df["평균기온"], errors="coerce")
+
+    df = df.dropna(subset=["날짜", "평균기온"])
+
+    return df
+
+
+try:
+    df = load_data()
+except Exception as e:
+    st.error("기온 데이터를 불러오는 중 문제가 발생했습니다.")
+    st.exception(e)
     st.stop()
 
-if all_df.empty:
-    st.warning("급식 데이터가 없습니다.")
+
+# --------------------------------------------------
+# 연도별 평균기온
+# --------------------------------------------------
+df["연도"] = df["날짜"].dt.year
+
+# 2025년 이후 제외
+df = df[df["연도"] <= 2025].copy()
+
+yearly = (
+    df.groupby("연도")
+    .agg(
+        평균기온=("평균기온", "mean"),
+        관측일수=("평균기온", "count")
+    )
+    .reset_index()
+)
+
+# 관측일 300일 미만인 해 제외
+yearly = yearly[yearly["관측일수"] >= 300].copy()
+
+yearly = yearly.sort_values("연도").reset_index(drop=True)
+
+
+if len(yearly) < 2:
+    st.error("회귀 분석을 수행하기에 충분한 데이터가 없습니다.")
     st.stop()
 
-df = all_df[
-    (all_df["날짜"].dt.year == year) &
-    (all_df["날짜"].dt.month == month)
+
+# --------------------------------------------------
+# 전체 기간 회귀
+# --------------------------------------------------
+yearly["지난연수"] = yearly["연도"] - 1908
+
+x = yearly["지난연수"].to_numpy(dtype=float)
+y = yearly["평균기온"].to_numpy(dtype=float)
+
+slope, intercept = np.polyfit(x, y, 1)
+
+correlation = np.corrcoef(x, y)[0, 1]
+
+# 100년에 몇 도 변화하는가
+slope_100 = slope * 100
+
+
+# --------------------------------------------------
+# 최근 20년 회귀
+# --------------------------------------------------
+latest_year = yearly["연도"].max()
+recent_start_year = latest_year - 19
+
+recent20 = yearly[
+    yearly["연도"] >= recent_start_year
 ].copy()
 
-if df.empty:
-    st.warning("해당 월에는 급식 데이터가 없습니다.")
-    st.stop()
+if len(recent20) >= 2:
+    recent_x = (recent20["연도"] - 1908).to_numpy(dtype=float)
+    recent_y = recent20["평균기온"].to_numpy(dtype=float)
 
-calorie_df = df.dropna(
-    subset=["칼로리"]
-).copy()
-
-if calorie_df.empty:
-    st.warning(
-        "칼로리 정보가 있는 급식 데이터가 없습니다."
-    )
-    st.stop()
-
-
-# ==================================================
-# 기본 통계
-# ==================================================
-avg_kcal = calorie_df["칼로리"].mean()
-median_kcal = calorie_df["칼로리"].median()
-std_kcal = calorie_df["칼로리"].std()
-max_kcal = calorie_df["칼로리"].max()
-min_kcal = calorie_df["칼로리"].min()
-
-max_row = calorie_df.loc[
-    calorie_df["칼로리"].idxmax()
-]
-
-min_row = calorie_df.loc[
-    calorie_df["칼로리"].idxmin()
-]
-
-
-# ==================================================
-# 한눈에 보기
-# ==================================================
-st.markdown(
-    '<div class="section-title">📌 한눈에 보기</div>',
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    f"""
-    <div class="info-box">
-        <b>{year}년 {month}월</b>에는 총
-        <b>{len(calorie_df)}일</b>의 칼로리 데이터가 있습니다.
-        하루 평균 급식 칼로리는
-        <b>{avg_kcal:,.0f} kcal</b>입니다.
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-
-# ==================================================
-# 통계 카드
-# ==================================================
-card1, card2, card3, card4 = st.columns(4)
-
-with card1:
-
-    st.markdown(
-        f"""
-        <div class="stat-card">
-            <div class="stat-label">🍚 한 달 평균</div>
-            <div class="stat-value">
-                {avg_kcal:,.0f} kcal
-            </div>
-            <div class="stat-description">
-                하루 평균 급식 에너지
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
+    recent_slope, recent_intercept = np.polyfit(
+        recent_x,
+        recent_y,
+        1
     )
 
-with card2:
+    recent_slope_100 = recent_slope * 100
 
-    st.markdown(
-        f"""
-        <div class="stat-card">
-            <div class="stat-label">🔥 가장 높은 날</div>
-            <div class="stat-value">
-                {max_kcal:,.0f} kcal
-            </div>
-            <div class="stat-description">
-                {max_row["날짜"].strftime("%Y-%m-%d")}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
+    recent_correlation = np.corrcoef(
+        recent_x,
+        recent_y
+    )[0, 1]
+else:
+    recent_slope = None
+    recent_intercept = None
+    recent_slope_100 = None
+    recent_correlation = None
+
+
+# --------------------------------------------------
+# 회귀 정보
+# --------------------------------------------------
+st.subheader("🌡️ 100년에 몇 도 오르는가?")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric(
+        "전체 기간의 기온 변화",
+        f"{slope_100:+.2f} °C / 100년"
     )
 
-with card3:
+with col2:
+    if recent_slope_100 is not None:
+        st.metric(
+            f"최근 20년의 기온 변화 ({recent_start_year}~{latest_year})",
+            f"{recent_slope_100:+.2f} °C / 100년"
+        )
+    else:
+        st.metric(
+            "최근 20년의 기온 변화",
+            "계산 불가"
+        )
 
-    st.markdown(
-        f"""
-        <div class="stat-card">
-            <div class="stat-label">🌱 가장 낮은 날</div>
-            <div class="stat-value">
-                {min_kcal:,.0f} kcal
-            </div>
-            <div class="stat-description">
-                {min_row["날짜"].strftime("%Y-%m-%d")}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
+
+# --------------------------------------------------
+# 전체 기간 vs 최근 20년 비교
+# --------------------------------------------------
+st.subheader("📊 전체 기간과 최근 20년 비교")
+
+compare_col1, compare_col2 = st.columns(2)
+
+with compare_col1:
+    st.markdown("### 전체 기간")
+    st.metric(
+        "100년당 변화량",
+        f"{slope_100:+.2f} °C"
     )
-
-
-with card4:
-
-    st.markdown(
-        f"""
-        <div class="stat-card">
-            <div class="stat-label">📊 중앙값</div>
-            <div class="stat-value">
-                {median_kcal:,.0f} kcal
-            </div>
-            <div class="stat-description">
-                데이터의 가운데 값
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
+    st.write(
+        f"사용 기간: {yearly['연도'].min()}~{yearly['연도'].max()}년"
     )
+    st.write(f"사용한 해: {len(yearly)}개")
+    st.write(f"상관계수: {correlation:.3f}")
+
+with compare_col2:
+    st.markdown("### 최근 20년")
+    if recent_slope_100 is not None:
+        st.metric(
+            "100년당 변화량",
+            f"{recent_slope_100:+.2f} °C"
+        )
+        st.write(
+            f"사용 기간: {recent_start_year}~{latest_year}년"
+        )
+        st.write(f"사용한 해: {len(recent20)}개")
+        st.write(f"상관계수: {recent_correlation:.3f}")
+    else:
+        st.write("최근 20년 데이터가 부족합니다.")
 
 
-# ==================================================
-# 그래프 1
-# ==================================================
-st.markdown(
-    '<div class="section-title">'
-    '📈 그래프 1. 날짜별 급식 칼로리'
-    '</div>',
-    unsafe_allow_html=True
+# --------------------------------------------------
+# 연도 선택
+# --------------------------------------------------
+st.subheader("🔮 연도별 예상 기온")
+
+selected_year = st.slider(
+    "예상 기온을 보고 싶은 연도를 선택하세요.",
+    min_value=1900,
+    max_value=2100,
+    value=2025,
+    step=1
 )
 
-chart_df = calorie_df.sort_values("날짜").copy()
-chart_df["7일 이동평균"] = chart_df["칼로리"].rolling(7, min_periods=1).mean()
+selected_x = selected_year - 1908
+predicted_temp = intercept + slope * selected_x
 
-fig1 = px.line(
-    chart_df,
-    x="날짜",
-    y="칼로리",
-    markers=True,
-    labels={
-        "날짜": "날짜",
-        "칼로리": "칼로리 (kcal)"
-    }
-)
-
-fig1.add_scatter(
-    x=chart_df["날짜"],
-    y=chart_df["7일 이동평균"],
-    mode="lines",
-    name="7일 이동평균",
-    line=dict(dash="dot"),
-    hovertemplate="날짜: %{x|%Y-%m-%d}<br>7일 이동평균: %{y:,.1f} kcal<extra></extra>"
-)
-
-fig1.add_hline(
-    y=avg_kcal,
-    line_dash="dash",
-    annotation_text=f"월 평균 {avg_kcal:,.0f} kcal",
-    annotation_position="top left"
-)
-
-fig1.update_traces(
-    hovertemplate=(
-        "날짜: %{x|%Y-%m-%d}"
-        "<br>칼로리: %{y:,.0f} kcal"
-        "<extra></extra>"
-    )
-)
-
-fig1.update_layout(
-    height=500,
-    plot_bgcolor="#15181F",
-    paper_bgcolor="#15181F",
-    font=dict(
-        color="#D8D8D8"
-    ),
-    xaxis=dict(
-        title="날짜",
-        gridcolor="#292E38",
-        zerolinecolor="#292E38"
-    ),
-    yaxis=dict(
-        title="칼로리 (kcal)",
-        gridcolor="#292E38",
-        zerolinecolor="#292E38"
-    ),
-    hovermode="x unified",
-    margin=dict(
-        l=30,
-        r=30,
-        t=30,
-        b=30
-    )
-)
-
-st.markdown(
-    '<div class="chart-card">',
-    unsafe_allow_html=True
-)
-
-st.plotly_chart(
-    fig1,
-    use_container_width=True
-)
-
-st.markdown(
-    '</div>',
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    """
-    <div class="what-box">
-        <div class="what-title">
-            💡 이 그래프로 알 수 있는 것
-        </div>
-        날짜에 따라 급식 칼로리가 어떻게 변하는지와
-        월 평균보다 높은 날과 낮은 날을 확인할 수 있습니다.
-    </div>
-    """,
-    unsafe_allow_html=True
+st.metric(
+    f"{selected_year}년 예상 연평균기온",
+    f"{predicted_temp:.2f} °C"
 )
 
 
-# ==================================================
-# 그래프 2
-# ==================================================
-st.markdown(
-    '<div class="section-title">'
-    '📊 그래프 2. 요일별 평균 급식 칼로리'
-    '</div>',
-    unsafe_allow_html=True
-)
+# --------------------------------------------------
+# 산점도 + 전체 회귀선 + 최근 20년 회귀선
+# --------------------------------------------------
+st.subheader("📈 연도별 평균기온과 회귀선")
 
-weekday_order = [
-    "월요일",
-    "화요일",
-    "수요일",
-    "목요일",
-    "금요일"
-]
+fig = go.Figure()
 
-weekday_avg = (
-    calorie_df[
-        calorie_df["요일"].isin(weekday_order)
-    ]
-    .groupby(
-        "요일",
-        as_index=False
-    )["칼로리"]
-    .mean()
-)
-
-weekday_avg["요일"] = pd.Categorical(
-    weekday_avg["요일"],
-    categories=weekday_order,
-    ordered=True
-)
-
-weekday_avg = weekday_avg.sort_values(
-    "요일"
-)
-
-if not weekday_avg.empty:
-
-    fig2 = px.bar(
-        weekday_avg,
-        x="요일",
-        y="칼로리",
-        text="칼로리",
-        labels={
-            "요일": "요일",
-            "칼로리": "평균 칼로리 (kcal)"
-        }
-    )
-
-    fig2.update_traces(
-        texttemplate="%{text:,.0f} kcal",
-        textposition="outside",
+# 실제 연평균기온
+fig.add_trace(
+    go.Scatter(
+        x=yearly["연도"],
+        y=yearly["평균기온"],
+        mode="markers",
+        name="실제 연평균기온",
+        marker=dict(size=7),
+        customdata=yearly[["관측일수"]].to_numpy(),
         hovertemplate=(
-            "요일: %{x}"
-            "<br>평균 칼로리: %{y:,.1f} kcal"
+            "연도: %{x}년<br>"
+            "평균기온: %{y:.2f} °C<br>"
+            "관측일수: %{customdata[0]}일"
             "<extra></extra>"
         )
     )
+)
 
-    fig2.update_layout(
-        height=500,
-        plot_bgcolor="#15181F",
-        paper_bgcolor="#15181F",
-        font=dict(
-            color="#D8D8D8"
-        ),
-        xaxis=dict(
-            title="요일",
-            gridcolor="#292E38",
-            zerolinecolor="#292E38"
-        ),
-        yaxis=dict(
-            title="평균 칼로리 (kcal)",
-            gridcolor="#292E38",
-            zerolinecolor="#292E38"
-        ),
-        margin=dict(
-            l=30,
-            r=30,
-            t=30,
-            b=30
+
+# --------------------------------------------------
+# 전체 기간 회귀선
+# --------------------------------------------------
+line_years = np.linspace(
+    yearly["연도"].min(),
+    yearly["연도"].max(),
+    300
+)
+
+line_x = line_years - 1908
+line_y = intercept + slope * line_x
+
+fig.add_trace(
+    go.Scatter(
+        x=line_years,
+        y=line_y,
+        mode="lines",
+        name="전체 기간 회귀선",
+        line=dict(width=3),
+        hovertemplate=(
+            "연도: %{x:.0f}년<br>"
+            "예측: %{y:.2f} °C"
+            "<extra></extra>"
+        )
+    )
+)
+
+
+# --------------------------------------------------
+# 최근 20년 회귀선
+# --------------------------------------------------
+if recent_slope_100 is not None:
+
+    recent_line_years = np.linspace(
+        recent_start_year,
+        latest_year,
+        100
+    )
+
+    recent_line_x = recent_line_years - 1908
+    recent_line_y = (
+        recent_intercept
+        + recent_slope * recent_line_x
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=recent_line_years,
+            y=recent_line_y,
+            mode="lines",
+            name="최근 20년 회귀선",
+            line=dict(
+                width=3,
+                dash="dash"
+            ),
+            hovertemplate=(
+                "연도: %{x:.0f}년<br>"
+                "최근 20년 회귀 예측: %{y:.2f} °C"
+                "<extra></extra>"
+            )
         )
     )
 
-    st.markdown(
-        '<div class="chart-card">',
-        unsafe_allow_html=True
-    )
 
-    st.plotly_chart(
-        fig2,
-        use_container_width=True
-    )
-
-    st.markdown(
-        '</div>',
-        unsafe_allow_html=True
-    )
-
-    highest_weekday = weekday_avg.loc[
-        weekday_avg["칼로리"].idxmax()
-    ]
-
-    lowest_weekday = weekday_avg.loc[
-        weekday_avg["칼로리"].idxmin()
-    ]
-
-    st.markdown(
-        f"""
-        <div class="what-box">
-            <div class="what-title">
-                💡 이 그래프로 알 수 있는 것
-            </div>
-            {highest_weekday["요일"]}의 평균 칼로리가
-            {highest_weekday["칼로리"]:,.1f} kcal로 가장 높고,
-            {lowest_weekday["요일"]}이
-            {lowest_weekday["칼로리"]:,.1f} kcal로 가장 낮습니다.
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-
-# ==================================================
-# 가장 높은 날 / 가장 낮은 날
-# ==================================================
-st.markdown(
-    '<div class="section-title">'
-    '🍽️ 가장 높은 날과 가장 낮은 날'
-    '</div>',
-    unsafe_allow_html=True
-)
-
-high_col, low_col = st.columns(2)
-
-
-with high_col:
-
-    high_menu = max_row["급식 메뉴"].replace(
-        "\n",
-        "<br>"
-    )
-
-    st.markdown(
-        f"""
-        <div class="meal-card">
-            <div class="meal-card-title">
-                🔥 가장 높은 칼로리
-            </div>
-
-            <div class="meal-date">
-                {max_row["날짜"].strftime("%Y년 %m월 %d일")}
-            </div>
-
-            <div class="meal-kcal">
-                {max_row["칼로리"]:,.0f} kcal
-            </div>
-
-            <div class="menu-text">
-                {high_menu}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-
-with low_col:
-
-    low_menu = min_row["급식 메뉴"].replace(
-        "\n",
-        "<br>"
-    )
-
-    st.markdown(
-        f"""
-        <div class="meal-card">
-            <div class="meal-card-title">
-                🌱 가장 낮은 칼로리
-            </div>
-
-            <div class="meal-date">
-                {min_row["날짜"].strftime("%Y년 %m월 %d일")}
-            </div>
-
-            <div class="meal-kcal">
-                {min_row["칼로리"]:,.0f} kcal
-            </div>
-
-            <div class="menu-text">
-                {low_menu}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-
-# ==================================================
-# 데이터 탐색
-# ==================================================
-st.markdown(
-    '<div class="section-title">🔎 급식 데이터 탐색</div>',
-    unsafe_allow_html=True
-)
-
-search_keyword = st.text_input(
-    "메뉴 검색",
-    placeholder="예: 김치, 돈까스, 우유",
-    help="현재 선택한 월의 급식 메뉴에서 검색합니다."
-)
-
-filtered_df = calorie_df.copy()
-if search_keyword.strip():
-    filtered_df = filtered_df[
-        filtered_df["급식 메뉴"].str.contains(
-            search_keyword.strip(),
-            case=False,
-            na=False
+# --------------------------------------------------
+# 선택한 연도의 예측값
+# --------------------------------------------------
+fig.add_trace(
+    go.Scatter(
+        x=[selected_year],
+        y=[predicted_temp],
+        mode="markers",
+        name=f"{selected_year}년 예측",
+        marker=dict(
+            size=14,
+            symbol="diamond"
+        ),
+        hovertemplate=(
+            f"{selected_year}년<br>"
+            f"예상 기온: {predicted_temp:.2f} °C"
+            "<extra></extra>"
         )
-    ]
-
-if search_keyword.strip():
-    st.caption(f"'{search_keyword.strip()}'가 포함된 급식: {len(filtered_df)}일")
-
-# ==================================================
-# 날짜별 데이터
-# ==================================================
-st.markdown(
-    '<div class="section-title">'
-    '📋 날짜별 급식 데이터'
-    '</div>',
-    unsafe_allow_html=True
-)
-
-display_df = filtered_df.copy()
-
-display_df["날짜"] = (
-    display_df["날짜"]
-    .dt.strftime("%Y-%m-%d")
-)
-
-display_df["칼로리"] = (
-    display_df["칼로리"]
-    .round(1)
-)
-
-display_df = display_df[
-    [
-        "날짜",
-        "요일",
-        "칼로리",
-        "급식 메뉴"
-    ]
-]
-
-csv_data = display_df.to_csv(index=False).encode("utf-8-sig")
-st.download_button(
-    "⬇️ 현재 데이터 CSV 다운로드",
-    data=csv_data,
-    file_name=f"송탄고등학교_{year}_{month:02d}_급식.csv",
-    mime="text/csv",
-    use_container_width=False
-)
-
-st.dataframe(
-    display_df,
-    use_container_width=True,
-    hide_index=True,
-    column_config={
-        "날짜": st.column_config.TextColumn(
-            "날짜"
-        ),
-        "요일": st.column_config.TextColumn(
-            "요일"
-        ),
-        "칼로리": st.column_config.NumberColumn(
-            "칼로리",
-            format="%.1f kcal"
-        ),
-        "급식 메뉴": st.column_config.TextColumn(
-            "급식 메뉴",
-            width="large"
-        )
-    }
-)
-
-st.caption(
-    f"총 {len(filtered_df)}일의 데이터를 표시하고 있습니다. (전체 {len(calorie_df)}일)"
+    )
 )
 
 
-# ==================================================
-# 참고 자료
-# ==================================================
-st.divider()
-
-st.markdown(
-    '<div class="section-title">📚 참고 자료</div>',
-    unsafe_allow_html=True
+fig.update_layout(
+    xaxis_title="연도",
+    yaxis_title="평균기온 (°C)",
+    hovermode="closest",
+    height=600,
+    legend_title="구분"
 )
 
-st.markdown(
-    """
-    <div class="reference-box">
-        학교 급식과 식품·영양에 관한 참고 자료입니다.
-    </div>
-    """,
-    unsafe_allow_html=True
+fig.update_xaxes(
+    tickmode="linear",
+    dtick=10
 )
 
-st.markdown(
-    "🔗 [CSPI — Calories in School Lunches]"
-    "(https://www.cspi.org/resource/calories-school-lunches)"
-)
-
-st.markdown(
-    "🌽 [Our World in Data — Global Food Data Explorer "
-    "(Maize/Corn Production)]"
-    "(https://ourworldindata.org/explorers/global-food?Food=Maize+%28corn%29&Metric=Production&Per+capita=false&country=OWID_WRL~USA~CHN~IND~BRA~GBR)"
+st.plotly_chart(
+    fig,
+    use_container_width=True
 )
 
 
-# ==================================================
-# 푸터
-# ==================================================
-st.divider()
+# --------------------------------------------------
+# 회귀식
+# --------------------------------------------------
+st.subheader("📐 회귀식")
 
-st.caption(
-    "🍚 NEIS 학교 급식 데이터 기반 · 송탄고등학교 중식 분석"
+st.write(
+    f"**전체 기간:** "
+    f"예상 연평균기온 = {intercept:.4f} "
+    f"+ ({slope:.4f} × 지난 연수)"
 )
+
+if recent_slope_100 is not None:
+    st.write(
+        f"**최근 20년:** "
+        f"예상 연평균기온 = {recent_intercept:.4f} "
+        f"+ ({recent_slope:.4f} × 지난 연수)"
+    )
+
+st.caption("지난 연수 = 연도 − 1908")
+
+
+# --------------------------------------------------
+# 추세 설명
+# --------------------------------------------------
+if slope > 0:
+    st.info(
+        f"전체 기간의 회귀선은 100년에 약 "
+        f"{slope_100:.2f} °C 상승하는 추세입니다."
+    )
+elif slope < 0:
+    st.info(
+        f"전체 기간의 회귀선은 100년에 약 "
+        f"{abs(slope_100):.2f} °C 하락하는 추세입니다."
+    )
+
+
+# --------------------------------------------------
+# 데이터 조건
+# --------------------------------------------------
+with st.expander("사용한 데이터 조건 보기"):
+    st.write("• 서울 기온 원본 데이터 사용")
+    st.write("• 2025년 이후 데이터 제외")
+    st.write("• 연간 관측일 수가 300일 미만인 해 제외")
+    st.write("• 각 연도의 평균기온으로 회귀 분석")
+    st.write("• 독립변수: 연도 − 1908")
+    st.write(
+        f"• 전체 회귀 기간: "
+        f"{yearly['연도'].min()}~{yearly['연도'].max()}년"
+    )
+    st.write(f"• 전체 사용 연도: {len(yearly)}개")
+    st.write(
+        f"• 최근 20년 회귀 기간: "
+        f"{recent_start_year}~{latest_year}년"
+    )
+    st.write(f"• 최근 20년 사용 연도: {len(recent20)}개")
