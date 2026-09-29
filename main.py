@@ -20,33 +20,39 @@ st.set_page_config(
 
 
 # ==================================================
-# 디자인
+# 다크 테마 디자인
 # ==================================================
 st.markdown("""
 <style>
-    /* 전체 배경 */
+    /* 전체 앱 */
     .stApp {
-        background-color: #FFF9F0;
+        background-color: #0E1117;
+        color: #E8E8E8;
     }
 
-    /* 메인 영역 */
+    /* 메인 컨테이너 */
     .main .block-container {
         max-width: 1200px;
         padding-top: 2rem;
         padding-bottom: 4rem;
     }
 
-    /* 제목 */
+    /* 기본 텍스트 */
+    p, span, label {
+        color: #D8D8D8;
+    }
+
+    /* 메인 제목 */
     .main-title {
         font-size: 2.7rem;
         font-weight: 800;
-        color: #4A3525;
+        color: #FFFFFF;
         margin-bottom: 0.2rem;
     }
 
     .subtitle {
         font-size: 1.05rem;
-        color: #806F60;
+        color: #A9A9B2;
         margin-bottom: 2rem;
     }
 
@@ -54,147 +60,206 @@ st.markdown("""
     .section-title {
         font-size: 1.45rem;
         font-weight: 750;
-        color: #4A3525;
+        color: #FFFFFF;
         margin-top: 2rem;
         margin-bottom: 0.8rem;
     }
 
-    /* 설명 박스 */
+    /* 안내 박스 */
     .info-box {
-        background-color: #FFF3D8;
-        border-left: 5px solid #F2B84B;
+        background-color: #1B1F27;
+        border-left: 5px solid #FFB84D;
         border-radius: 10px;
         padding: 1rem 1.2rem;
-        color: #5B4636;
+        color: #DCDCDC;
         margin: 1rem 0 1.5rem 0;
     }
 
-    /* 카드 */
+    .info-box b {
+        color: #FFD27A;
+    }
+
+    /* 통계 카드 */
     .stat-card {
-        background-color: white;
+        background: linear-gradient(
+            145deg,
+            #191D25,
+            #14171D
+        );
         border-radius: 18px;
         padding: 1.3rem;
-        box-shadow: 0 4px 14px rgba(90, 65, 40, 0.08);
-        border: 1px solid #F1E5D6;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.35);
+        border: 1px solid #292E38;
         min-height: 145px;
     }
 
     .stat-label {
         font-size: 0.95rem;
-        color: #88796D;
+        color: #9EA4AF;
         margin-bottom: 0.4rem;
     }
 
     .stat-value {
         font-size: 2rem;
         font-weight: 800;
-        color: #4A3525;
+        color: #FFFFFF;
     }
 
     .stat-description {
         font-size: 0.85rem;
-        color: #9A8B7D;
+        color: #858B96;
         margin-top: 0.4rem;
     }
 
     /* 그래프 카드 */
     .chart-card {
-        background-color: white;
+        background-color: #15181F;
         border-radius: 18px;
         padding: 0.8rem 1rem 0.3rem 1rem;
-        box-shadow: 0 4px 14px rgba(90, 65, 40, 0.06);
-        border: 1px solid #F1E5D6;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+        border: 1px solid #292E38;
         margin-bottom: 1rem;
     }
 
-    /* 알 수 있는 것 */
+    /* 그래프 설명 */
     .what-box {
-        background-color: #F8F3EC;
+        background-color: #181C23;
         border-radius: 12px;
         padding: 0.9rem 1rem;
         margin: 0.8rem 0 2rem 0;
-        color: #5E5146;
+        color: #C9CDD4;
+        border: 1px solid #292E38;
     }
 
     .what-title {
         font-weight: 750;
-        color: #6A4E35;
+        color: #FFCA70;
         margin-bottom: 0.3rem;
     }
 
-    /* 높은 날 / 낮은 날 */
+    /* 급식 카드 */
     .meal-card {
-        background-color: white;
+        background: linear-gradient(
+            145deg,
+            #191D25,
+            #14171D
+        );
         border-radius: 18px;
         padding: 1.3rem;
-        border: 1px solid #F1E5D6;
-        box-shadow: 0 4px 14px rgba(90, 65, 40, 0.06);
+        border: 1px solid #292E38;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
         min-height: 260px;
     }
 
     .meal-card-title {
         font-size: 1.2rem;
         font-weight: 750;
-        color: #4A3525;
+        color: #FFFFFF;
     }
 
     .meal-date {
         font-size: 1rem;
-        color: #88796D;
+        color: #9EA4AF;
         margin-top: 0.5rem;
     }
 
     .meal-kcal {
         font-size: 1.8rem;
         font-weight: 800;
-        color: #C47D26;
+        color: #FFB84D;
         margin: 0.5rem 0;
     }
 
     .menu-text {
-        color: #65584E;
+        color: #C7CBD2;
         line-height: 1.7;
         white-space: pre-line;
     }
 
-    /* 참고자료 */
+    /* 참고 자료 */
     .reference-box {
-        background-color: white;
+        background-color: #15181F;
         border-radius: 16px;
         padding: 1.2rem 1.4rem;
-        border: 1px solid #F1E5D6;
+        border: 1px solid #292E38;
+        color: #BFC4CC;
+        margin-bottom: 1rem;
     }
 
     /* 사이드바 */
     section[data-testid="stSidebar"] {
-        background-color: #FFF3DD;
+        background-color: #11141A;
+        border-right: 1px solid #292E38;
     }
 
     .sidebar-title {
         font-size: 1.35rem;
         font-weight: 800;
-        color: #4A3525;
+        color: #FFFFFF;
     }
 
     .sidebar-school {
-        background-color: white;
+        background-color: #191D25;
         padding: 1rem;
         border-radius: 14px;
         margin: 1rem 0;
-        border: 1px solid #F1E5D6;
+        border: 1px solid #292E38;
     }
 
-    /* Streamlit metric 숨김 스타일 대신 직접 카드 사용 */
-    div[data-testid="stMetric"] {
-        background-color: white;
-        border-radius: 16px;
-        padding: 1rem;
+    .sidebar-school b {
+        color: #FFFFFF;
+    }
+
+    .sidebar-school span {
+        color: #949AA5 !important;
+    }
+
+    /* 입력 위젯 */
+    div[data-baseweb="select"] > div {
+        background-color: #191D25;
+        border-color: #343A46;
+        color: #FFFFFF;
+    }
+
+    div[data-baseweb="select"] span {
+        color: #FFFFFF !important;
+    }
+
+    input {
+        background-color: #191D25 !important;
+        color: #FFFFFF !important;
+    }
+
+    /* 데이터프레임 */
+    div[data-testid="stDataFrame"] {
+        border: 1px solid #292E38;
+        border-radius: 12px;
+        overflow: hidden;
     }
 
     /* 링크 */
     a {
-        color: #B36B20 !important;
+        color: #FFBF5F !important;
         font-weight: 600;
+    }
+
+    a:hover {
+        color: #FFD88A !important;
+    }
+
+    /* 경고 */
+    div[data-testid="stAlert"] {
+        background-color: #1B1F27;
+    }
+
+    /* 버튼 */
+    button {
+        border-radius: 10px !important;
+    }
+
+    /* 구분선 */
+    hr {
+        border-color: #292E38 !important;
     }
 
     /* 모바일 */
@@ -256,7 +321,10 @@ def get_meal_data(year, month):
         return pd.DataFrame(), f"API 연결 오류: {e}"
 
     except ValueError:
-        return pd.DataFrame(), "API에서 올바른 JSON 데이터를 받지 못했습니다."
+        return (
+            pd.DataFrame(),
+            "API에서 올바른 JSON 데이터를 받지 못했습니다."
+        )
 
     if "mealServiceDietInfo" not in data:
         return pd.DataFrame(), None
@@ -280,7 +348,7 @@ def get_meal_data(year, month):
             menu
         )
 
-        # kcal 추출
+        # kcal 숫자 추출
         kcal_match = re.search(
             r"(\d+(?:\.\d+)?)\s*[Kk][Cc][Aa][Ll]",
             menu
@@ -348,9 +416,7 @@ with st.sidebar:
         """
         <div class="sidebar-school">
             <b>🏫 송탄고등학교</b><br>
-            <span style="color:#88796D;">
-            경기도교육청 · 중식
-            </span>
+            <span>경기도교육청 · 중식</span>
         </div>
         """,
         unsafe_allow_html=True
@@ -395,7 +461,9 @@ with st.sidebar:
 # 메인 제목
 # ==================================================
 st.markdown(
-    '<div class="main-title">🍚 급식의 한 달 평균 칼로리는 얼마나 될까?</div>',
+    '<div class="main-title">'
+    '🍚 급식의 한 달 평균 칼로리는 얼마나 될까?'
+    '</div>',
     unsafe_allow_html=True
 )
 
@@ -451,7 +519,7 @@ min_row = calorie_df.loc[
 
 
 # ==================================================
-# 데이터 요약
+# 한눈에 보기
 # ==================================================
 st.markdown(
     '<div class="section-title">📌 한눈에 보기</div>',
@@ -477,11 +545,14 @@ st.markdown(
 card1, card2, card3 = st.columns(3)
 
 with card1:
+
     st.markdown(
         f"""
         <div class="stat-card">
             <div class="stat-label">🍚 한 달 평균</div>
-            <div class="stat-value">{avg_kcal:,.0f} kcal</div>
+            <div class="stat-value">
+                {avg_kcal:,.0f} kcal
+            </div>
             <div class="stat-description">
                 하루 평균 급식 에너지
             </div>
@@ -491,11 +562,14 @@ with card1:
     )
 
 with card2:
+
     st.markdown(
         f"""
         <div class="stat-card">
             <div class="stat-label">🔥 가장 높은 날</div>
-            <div class="stat-value">{max_kcal:,.0f} kcal</div>
+            <div class="stat-value">
+                {max_kcal:,.0f} kcal
+            </div>
             <div class="stat-description">
                 {max_row["날짜"].strftime("%Y-%m-%d")}
             </div>
@@ -505,11 +579,14 @@ with card2:
     )
 
 with card3:
+
     st.markdown(
         f"""
         <div class="stat-card">
             <div class="stat-label">🌱 가장 낮은 날</div>
-            <div class="stat-value">{min_kcal:,.0f} kcal</div>
+            <div class="stat-value">
+                {min_kcal:,.0f} kcal
+            </div>
             <div class="stat-description">
                 {min_row["날짜"].strftime("%Y-%m-%d")}
             </div>
@@ -523,7 +600,9 @@ with card3:
 # 그래프 1
 # ==================================================
 st.markdown(
-    '<div class="section-title">📈 그래프 1. 날짜별 급식 칼로리</div>',
+    '<div class="section-title">'
+    '📈 그래프 1. 날짜별 급식 칼로리'
+    '</div>',
     unsafe_allow_html=True
 )
 
@@ -555,10 +634,28 @@ fig1.update_traces(
 
 fig1.update_layout(
     height=500,
-    plot_bgcolor="white",
-    paper_bgcolor="white",
+    plot_bgcolor="#15181F",
+    paper_bgcolor="#15181F",
+    font=dict(
+        color="#D8D8D8"
+    ),
+    xaxis=dict(
+        title="날짜",
+        gridcolor="#292E38",
+        zerolinecolor="#292E38"
+    ),
+    yaxis=dict(
+        title="칼로리 (kcal)",
+        gridcolor="#292E38",
+        zerolinecolor="#292E38"
+    ),
     hovermode="x unified",
-    margin=dict(l=30, r=30, t=30, b=30)
+    margin=dict(
+        l=30,
+        r=30,
+        t=30,
+        b=30
+    )
 )
 
 st.markdown(
@@ -579,7 +676,9 @@ st.markdown(
 st.markdown(
     """
     <div class="what-box">
-        <div class="what-title">💡 이 그래프로 알 수 있는 것</div>
+        <div class="what-title">
+            💡 이 그래프로 알 수 있는 것
+        </div>
         날짜에 따라 급식 칼로리가 어떻게 변하는지와
         월 평균보다 높은 날과 낮은 날을 확인할 수 있습니다.
     </div>
@@ -592,7 +691,9 @@ st.markdown(
 # 그래프 2
 # ==================================================
 st.markdown(
-    '<div class="section-title">📊 그래프 2. 요일별 평균 급식 칼로리</div>',
+    '<div class="section-title">'
+    '📊 그래프 2. 요일별 평균 급식 칼로리'
+    '</div>',
     unsafe_allow_html=True
 )
 
@@ -650,9 +751,27 @@ if not weekday_avg.empty:
 
     fig2.update_layout(
         height=500,
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        margin=dict(l=30, r=30, t=30, b=30)
+        plot_bgcolor="#15181F",
+        paper_bgcolor="#15181F",
+        font=dict(
+            color="#D8D8D8"
+        ),
+        xaxis=dict(
+            title="요일",
+            gridcolor="#292E38",
+            zerolinecolor="#292E38"
+        ),
+        yaxis=dict(
+            title="평균 칼로리 (kcal)",
+            gridcolor="#292E38",
+            zerolinecolor="#292E38"
+        ),
+        margin=dict(
+            l=30,
+            r=30,
+            t=30,
+            b=30
+        )
     )
 
     st.markdown(
@@ -681,7 +800,9 @@ if not weekday_avg.empty:
     st.markdown(
         f"""
         <div class="what-box">
-            <div class="what-title">💡 이 그래프로 알 수 있는 것</div>
+            <div class="what-title">
+                💡 이 그래프로 알 수 있는 것
+            </div>
             {highest_weekday["요일"]}의 평균 칼로리가
             {highest_weekday["칼로리"]:,.1f} kcal로 가장 높고,
             {lowest_weekday["요일"]}이
@@ -696,11 +817,14 @@ if not weekday_avg.empty:
 # 가장 높은 날 / 가장 낮은 날
 # ==================================================
 st.markdown(
-    '<div class="section-title">🍽️ 가장 높은 날과 가장 낮은 날</div>',
+    '<div class="section-title">'
+    '🍽️ 가장 높은 날과 가장 낮은 날'
+    '</div>',
     unsafe_allow_html=True
 )
 
 high_col, low_col = st.columns(2)
+
 
 with high_col:
 
@@ -768,7 +892,9 @@ with low_col:
 # 날짜별 데이터
 # ==================================================
 st.markdown(
-    '<div class="section-title">📋 날짜별 급식 데이터</div>',
+    '<div class="section-title">'
+    '📋 날짜별 급식 데이터'
+    '</div>',
     unsafe_allow_html=True
 )
 
