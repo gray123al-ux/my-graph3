@@ -1055,3 +1055,4 @@ def get_meal_data():
     )
 
     return df.sort_values("날짜")
+    df, error_message = get_meal_data(year, month)
