@@ -449,6 +449,10 @@ with st.sidebar:
         "데이터는 NEIS API에서 가져옵니다."
     )
 
+    if st.button("🔄 데이터 새로고침", use_container_width=True):
+        get_all_meal_data.clear()
+        st.rerun()
+
 
 # ==================================================
 # 메인 제목
@@ -506,6 +510,8 @@ if calorie_df.empty:
 # 기본 통계
 # ==================================================
 avg_kcal = calorie_df["칼로리"].mean()
+median_kcal = calorie_df["칼로리"].median()
+std_kcal = calorie_df["칼로리"].std()
 max_kcal = calorie_df["칼로리"].max()
 min_kcal = calorie_df["칼로리"].min()
 
@@ -542,7 +548,7 @@ st.markdown(
 # ==================================================
 # 통계 카드
 # ==================================================
-card1, card2, card3 = st.columns(3)
+card1, card2, card3, card4 = st.columns(4)
 
 with card1:
 
@@ -596,6 +602,24 @@ with card3:
     )
 
 
+with card4:
+
+    st.markdown(
+        f"""
+        <div class="stat-card">
+            <div class="stat-label">📊 중앙값</div>
+            <div class="stat-value">
+                {median_kcal:,.0f} kcal
+            </div>
+            <div class="stat-description">
+                데이터의 가운데 값
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
 # ==================================================
 # 그래프 1
 # ==================================================
@@ -606,8 +630,11 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+chart_df = calorie_df.sort_values("날짜").copy()
+chart_df["7일 이동평균"] = chart_df["칼로리"].rolling(7, min_periods=1).mean()
+
 fig1 = px.line(
-    calorie_df,
+    chart_df,
     x="날짜",
     y="칼로리",
     markers=True,
@@ -615,6 +642,15 @@ fig1 = px.line(
         "날짜": "날짜",
         "칼로리": "칼로리 (kcal)"
     }
+)
+
+fig1.add_scatter(
+    x=chart_df["날짜"],
+    y=chart_df["7일 이동평균"],
+    mode="lines",
+    name="7일 이동평균",
+    line=dict(dash="dot"),
+    hovertemplate="날짜: %{x|%Y-%m-%d}<br>7일 이동평균: %{y:,.1f} kcal<extra></extra>"
 )
 
 fig1.add_hline(
@@ -889,6 +925,33 @@ with low_col:
 
 
 # ==================================================
+# 데이터 탐색
+# ==================================================
+st.markdown(
+    '<div class="section-title">🔎 급식 데이터 탐색</div>',
+    unsafe_allow_html=True
+)
+
+search_keyword = st.text_input(
+    "메뉴 검색",
+    placeholder="예: 김치, 돈까스, 우유",
+    help="현재 선택한 월의 급식 메뉴에서 검색합니다."
+)
+
+filtered_df = calorie_df.copy()
+if search_keyword.strip():
+    filtered_df = filtered_df[
+        filtered_df["급식 메뉴"].str.contains(
+            search_keyword.strip(),
+            case=False,
+            na=False
+        )
+    ]
+
+if search_keyword.strip():
+    st.caption(f"'{search_keyword.strip()}'가 포함된 급식: {len(filtered_df)}일")
+
+# ==================================================
 # 날짜별 데이터
 # ==================================================
 st.markdown(
@@ -898,7 +961,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-display_df = calorie_df.copy()
+display_df = filtered_df.copy()
 
 display_df["날짜"] = (
     display_df["날짜"]
@@ -918,6 +981,15 @@ display_df = display_df[
         "급식 메뉴"
     ]
 ]
+
+csv_data = display_df.to_csv(index=False).encode("utf-8-sig")
+st.download_button(
+    "⬇️ 현재 데이터 CSV 다운로드",
+    data=csv_data,
+    file_name=f"송탄고등학교_{year}_{month:02d}_급식.csv",
+    mime="text/csv",
+    use_container_width=False
+)
 
 st.dataframe(
     display_df,
@@ -942,7 +1014,7 @@ st.dataframe(
 )
 
 st.caption(
-    f"총 {len(calorie_df)}일의 칼로리 데이터를 분석했습니다."
+    f"총 {len(filtered_df)}일의 데이터를 표시하고 있습니다. (전체 {len(calorie_df)}일)"
 )
 
 
