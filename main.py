@@ -1,6 +1,4 @@
 import re
-import calendar
-from datetime import date
 
 import pandas as pd
 import requests
@@ -289,64 +287,62 @@ API_URL = "https://open.neis.go.kr/hub/mealServiceDietInfo"
 # NEIS 데이터 가져오기
 # ==================================================
 @st.cache_data(ttl=3600)
-def get_meal_data(year, month):
-
-    last_day = calendar.monthrange(year, month)[1]
-
-    from_ymd = f"{year}{month:02d}01"
-    to_ymd = f"{year}{month:02d}{last_day:02d}"
+def get_all_meal_data():
+    """NEIS API에서 2025-09-01 ~ 2026-09-30 중식 데이터를 한 번에 가져옵니다."""
+    try:
+        api_key = st.secrets["KEY"]
+    except Exception:
+        return pd.DataFrame(), (
+            'Streamlit Secrets에 KEY가 없습니다. '
+            '.streamlit/secrets.toml에 KEY = "발급받은_인증키"를 넣어 주세요.'
+        )
 
     params = {
+        "KEY": api_key,
         "Type": "json",
         "pIndex": 1,
         "pSize": 1000,
         "ATPT_OFCDC_SC_CODE": ATPT_OFCDC_SC_CODE,
         "SD_SCHUL_CODE": SD_SCHUL_CODE,
         "MMEAL_SC_CODE": "2",
-        "MLSV_FROM_YMD": from_ymd,
-        "MLSV_TO_YMD": to_ymd,
+        "MLSV_FROM_YMD": "20250901",
+        "MLSV_TO_YMD": "20260930",
     }
 
     try:
         response = requests.get(
             API_URL,
             params=params,
-            timeout=10
+            timeout=15
         )
-
         response.raise_for_status()
         data = response.json()
-
     except requests.exceptions.RequestException as e:
         return pd.DataFrame(), f"API 연결 오류: {e}"
-
     except ValueError:
-        return (
-            pd.DataFrame(),
-            "API에서 올바른 JSON 데이터를 받지 못했습니다."
-        )
+        return pd.DataFrame(), "API에서 올바른 JSON 데이터를 받지 못했습니다."
 
     if "mealServiceDietInfo" not in data:
-        return pd.DataFrame(), None
+        result = data.get("RESULT", {})
+        message = result.get(
+            "MESSAGE",
+            "NEIS API에서 급식 데이터를 찾지 못했습니다."
+        )
+        return pd.DataFrame(), message
 
     try:
         rows = data["mealServiceDietInfo"][1]["row"]
-    except (KeyError, IndexError):
-        return pd.DataFrame(), None
+    except (KeyError, IndexError, TypeError):
+        return pd.DataFrame(), "NEIS API 응답에서 급식 데이터를 찾지 못했습니다."
 
     result = []
 
     for row in rows:
-
         meal_date = row.get("MLSV_YMD", "")
         menu = row.get("DDISH_NM", "")
 
         # <br/> → 줄바꿈
-        menu = re.sub(
-            r"<br\s*/?>",
-            "\n",
-            menu
-        )
+        menu = re.sub(r"<br\s*/?>", "\n", menu)
 
         # kcal 숫자 추출
         kcal_match = re.search(
@@ -354,10 +350,7 @@ def get_meal_data(year, month):
             menu
         )
 
-        if kcal_match:
-            kcal = float(kcal_match.group(1))
-        else:
-            kcal = None
+        kcal = float(kcal_match.group(1)) if kcal_match else None
 
         result.append({
             "날짜": meal_date,
@@ -386,9 +379,7 @@ def get_meal_data(year, month):
         6: "일요일"
     }
 
-    df["요일"] = df["날짜"].dt.weekday.map(
-        weekday_map
-    )
+    df["요일"] = df["날짜"].dt.weekday.map(weekday_map)
 
     df["칼로리"] = pd.to_numeric(
         df["칼로리"],
@@ -424,20 +415,22 @@ with st.sidebar:
 
     st.markdown("### 📅 분석 기간")
 
-    today = date.today()
-
-    year = st.number_input(
+    year = st.selectbox(
         "연도",
-        min_value=2020,
-        max_value=today.year,
-        value=today.year,
-        step=1
+        [2025, 2026],
+        index=1
     )
+
+    available_months = list(range(1, 13))
+    if year == 2025:
+        available_months = list(range(9, 13))
+    elif year == 2026:
+        available_months = list(range(1, 10))
 
     month = st.selectbox(
         "월",
-        list(range(1, 13)),
-        index=today.month - 1,
+        available_months,
+        index=len(available_months) - 1,
         format_func=lambda x: f"{x}월"
     )
 
@@ -479,16 +472,23 @@ st.markdown(
 # ==================================================
 # 데이터 불러오기
 # ==================================================
-df, error_message = get_meal_data(year, month)
+all_df, error_message = get_all_meal_data()
 
 if error_message:
     st.error(error_message)
     st.stop()
 
+if all_df.empty:
+    st.warning("급식 데이터가 없습니다.")
+    st.stop()
+
+df = all_df[
+    (all_df["날짜"].dt.year == year) &
+    (all_df["날짜"].dt.month == month)
+].copy()
+
 if df.empty:
-    st.warning(
-        "해당 월에는 급식 데이터가 없습니다."
-    )
+    st.warning("해당 월에는 급식 데이터가 없습니다.")
     st.stop()
 
 calorie_df = df.dropna(
@@ -985,75 +985,3 @@ st.divider()
 st.caption(
     "🍚 NEIS 학교 급식 데이터 기반 · 송탄고등학교 중식 분석"
 )
-
-API_URL = "https://open.neis.go.kr/hub/mealServiceDietInfo"
-
-@st.cache_data(ttl=3600)
-def get_meal_data():
-
-    params = {
-        "KEY": st.secrets["KEY"],
-        "Type": "json",
-        "ATPT_OFCDC_SC_CODE": "J10",
-        "SD_SCHUL_CODE": "7530480",
-        "MLSV_FROM_YMD": "20250901",
-        "MLSV_TO_YMD": "20260930",
-        "pSize": 1000,
-    }
-
-    response = requests.get(
-        API_URL,
-        params=params,
-        timeout=10
-    )
-
-    response.raise_for_status()
-
-    data = response.json()
-
-    if "mealServiceDietInfo" not in data:
-        return pd.DataFrame()
-
-    rows = data["mealServiceDietInfo"][1]["row"]
-
-    result = []
-
-    for row in rows:
-
-        meal_date = row.get("MLSV_YMD", "")
-        menu = row.get("DDISH_NM", "")
-
-        menu = re.sub(
-            r"<br\s*/?>",
-            "\n",
-            menu
-        )
-
-        kcal_match = re.search(
-            r"(\d+(?:\.\d+)?)\s*[Kk][Cc][Aa][Ll]",
-            menu
-        )
-
-        kcal = (
-            float(kcal_match.group(1))
-            if kcal_match
-            else None
-        )
-
-        result.append({
-            "날짜": meal_date,
-            "급식 메뉴": menu,
-            "칼로리": kcal
-        })
-
-    df = pd.DataFrame(result)
-
-    df["날짜"] = pd.to_datetime(
-        df["날짜"],
-        format="%Y%m%d",
-        errors="coerce"
-    )
-
-    return df.sort_values("날짜")
-    df, error_message = get_meal_data(year, month)
-    df = get_meal_data()
